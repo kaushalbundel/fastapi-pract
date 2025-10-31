@@ -1,6 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from models import Products
+from database import SessionLocal, engine
+import database_model
 app = FastAPI()
+
+# creating a table
+database_model.BASE.metadata.create_all(bind = engine )
 
 # this is a simple way. The actual way is to store this information in database
 products = [
@@ -10,13 +15,34 @@ Products(id=3, name="Vaccum Cleaner", description="Eureka Forbs", price= 12999.0
 Products(id=4, name="Refrigerator", description="Double Door", price= 20999.0, quantity=20), 
 ]
 
+
+# populating the product values as defined here in the database
+def init_db():
+
+    # starting the session
+    db = SessionLocal()
+
+    is_table_empty = True if db.query(database_model.Products) == 0 else False
+
+    # we need to map the product(pydantic)-database with the product that is related to sqlalchemy, since we are trying to link the products data above to populate the database table
+    if is_table_empty:
+        for product in products:
+            db.add(instance=database_model.Products(**product.model_dump())) 
+    
+    # commiting manually
+    db.commit()
+
+init_db()
+
+# showing all products
 @app.get("/products")
 def get_all_products():
     '''
     Get all products in the database
     '''
-    return products
+    db = SessionLocal()
 
+# showing specific product using an id
 @app.get("/product/{id}")
 def get_product_by_id(id: int):
     '''
@@ -31,7 +57,7 @@ def get_product_by_id(id: int):
 
     raise HTTPException(404, f"The product with id: {id} not found")
 
-
+# appending a product
 @app.post("/product")
 def add_product(product: Products):
     '''
@@ -46,7 +72,6 @@ def add_product(product: Products):
     return product
 
 # updating a product on the basis of an id
-
 @app.put("/product/{id}")
 def update_product_by_id(id: int, product: Products):
     '''
@@ -63,6 +88,19 @@ def update_product_by_id(id: int, product: Products):
             return product
     raise HTTPException(404, f"The id: {id} does not exists, or the id does not match.")
 
-    # The above code is giving me unexpected error
-    # When I add a product that does not have the same id as the id in the url then also the update operation is being performed
+
+# Delete request
+@app.delete("/product/{id}")
+def delete_product_by_id(id: int):
+    '''
+    deletes product on the basis of the id provided
+    '''
+    for index, existing_product in enumerate(products):
+        if existing_product.id == id:
+            products.pop(index)
+            return f"The product item {products[index]} is successfully removed"
+    
+    # In case product is not found
+    raise HTTPException(404, f"No product with product id {id} found.")
+
 
