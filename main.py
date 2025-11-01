@@ -17,8 +17,11 @@ Products(id=4, name="Refrigerator", description="Double Door", price= 20999.0, q
 
 
 # populating the product values as defined here in the database
+# in actual situation this process is redundant as the records will be added in the sql directly or through some other route
 def init_db():
-
+    '''
+   Check if the table is empty and adds the products in the product list.  
+    '''
     # starting the session
     db = SessionLocal()
 
