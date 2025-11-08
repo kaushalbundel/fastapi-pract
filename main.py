@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException, Depends
-from models import Products
+from models import Products, ProductsCreate
 from database import SessionLocal, engine
 import database_model
 from sqlalchemy.orm import Session
@@ -119,32 +119,24 @@ def add_product(product: Products, db: Session = Depends(get_db)):
         HTTPException(404, "The product is not inserted")
 
 # updating a product on the basis of an id
-@app.put("/product/{id}")
-def update_product_by_id(id: int, product: Products, db: Session = Depends(get_db)):
+@app.put("/product/{id}", response_model=ProductsCreate)
+def update_product_by_id(id: int, product: ProductsCreate, db: Session = Depends(get_db)):
     '''
     Updates the entire product information on the basis of an id
     '''
-    # for id_counter, existing_product in enumerate(products):
-    #     if existing_product.id == id:
-    #         products[id_counter] = product
+    db_update = db.query(database_model.Products).filter(database_model.Products.id == id).first()
 
-    #         # There are two sources of truth here, one is the url and the other is the product that we are updating
-    #         # Out of these two which id do we take as a final source of truth
-    #         # Assumption: Taking url id as the single source of truth
-    #         product.id = id
-    #         return product
+    if not db_update:
+        HTTPException(404, f"The id {id} does not exists.")
 
-    db_product = db.query(database_model.Products).filter(database_model.Products.id == id).first()
-    if db_product:
-        db_product.description = product.description
-        db_product.name =  product.name
-        db_product.price = product.price
-        db_product.quantity = product.quantity
+    # update data should be converted into a dictionary to that individual items can be updated
+    update_data = product.model_dump() 
 
-        db.commit()
-        return f"The product is updated."
-
-    raise HTTPException(404, f"The id: {id} does not exists, or the id does not match.")
+    # loading the data in dictionary format to the database_model object
+    for key, value in update_data.items():
+        setattr(db_update, key, value)
+    
+    return db_update
 
 
 # Delete request
