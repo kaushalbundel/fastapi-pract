@@ -145,16 +145,18 @@ def update_product_by_id(id: int, product: ProductsCreate, db: Session = Depends
 
 # Delete request
 @app.delete("/product/{id}")
-def delete_product_by_id(id: int):
+def delete_product_by_id(id: int, db: Session = Depends(get_db)):
     '''
     deletes product on the basis of the id provided
     '''
-    for index, existing_product in enumerate(products):
-        if existing_product.id == id:
-            products.pop(index)
-            return f"The product item {products[index]} is successfully removed"
-    
-    # In case product is not found
-    raise HTTPException(404, f"No product with product id {id} found.")
+    # validating if the id exists
+    id_delete = db.query(database_model.Products).filter(database_model.Products.id == id).first()
+
+    if not id_delete:
+        raise HTTPException(404, f"No product with product id {id} found.")
+
+    db.delete(id_delete)
+
+    return f"The id {id} and related data is deleted. "
 
 
