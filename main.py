@@ -27,7 +27,7 @@ def init_db():
     # starting the session
     db = SessionLocal()
 
-    is_table_empty = True if db.query(database_model.Products) == 0 else False
+    is_table_empty = True if db.query(database_model.Products).count() == 0 else False
 
     # we need to map the product(pydantic)-database with the product that is related to sqlalchemy, since we are trying to link the products data above to populate the database table
     if is_table_empty:
@@ -66,6 +66,7 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+        db.commit()
     finally:
         db.close()
 
@@ -127,7 +128,7 @@ def update_product_by_id(id: int, product: ProductsCreate, db: Session = Depends
     db_update = db.query(database_model.Products).filter(database_model.Products.id == id).first()
 
     if not db_update:
-        HTTPException(404, f"The id {id} does not exists.")
+        raise HTTPException(404, f"The id {id} does not exists.")
 
     # update data should be converted into a dictionary to that individual items can be updated
     update_data = product.model_dump() 
@@ -135,7 +136,10 @@ def update_product_by_id(id: int, product: ProductsCreate, db: Session = Depends
     # loading the data in dictionary format to the database_model object
     for key, value in update_data.items():
         setattr(db_update, key, value)
-    
+
+    #saving the information
+    db.add(db_update) 
+
     return db_update
 
 
